@@ -23,10 +23,10 @@ def fetch(item, subtable=None, toml="/settings.toml"):
         del item, subtable, toml
         raise TypeError("Subtable should be str.")
     try:
-        with open(toml, "r") as toml:
+        with open(toml, "r") as tomlf:
             result = None
             if subtable is None:  # Browse root table
-                for line in toml:
+                for line in tomlf:
                     if not line.startswith("["):
                         if line.startswith(item + "="):
                             result = _elementfetch(line, item)
@@ -37,7 +37,7 @@ def fetch(item, subtable=None, toml="/settings.toml"):
                         break
             else:  # crawl to specified table
                 got = False
-                for line in toml:
+                for line in tomlf:
                     if not got:
                         if line.startswith("[") and line == f"[{subtable}]":
                             got = True  # we have reached the desired point
