@@ -2,11 +2,30 @@ from gc import collect as _collect
 
 
 def _elementfetch(line, item):
-    result = line[len(item) + 1 :]
+    if line.endswith("\n"):  # remove dangling \n
+        line = line[:-1]
+
+    result = line[line.find("=") + 1 :]
+
+    while result.startswith(" "):  # remove unused spaces
+        result = result[1:]
+
+    if "#" in result:  # remove commends
+        result = result[: result.rfind('"') + 1]
+
     if result.startswith('"') and result.endswith('"'):
         result = result[1:-1]
     elif result.isdigit() or (result[0] == "-" and result[1:].isdigit()):
         result = int(result)
+    elif result[0] == "0" and result[1].isletter():
+        if result[1] == "x":
+            result = hex(int(result[2:], 16))
+        elif result[1] == "o":
+            result = oct(int(result[2:], 8))
+        else:
+            del line, item, result
+            _collect()
+            raise TypeError("Invalid value.")
     else:
         del line, item, result
         _collect()
@@ -29,9 +48,7 @@ def fetch(item, subtable=None, toml="/settings.toml"):
             if subtable is None:  # Browse root table
                 for line in tomlf:
                     if not line.startswith("["):
-                        if line.startswith(item + "="):
-                            if line.endswith("\n"):
-                                line = line[:-1]
+                        if line.startswith(item + "=") or line.startswith(item + " ="):
                             result = _elementfetch(line, item)
                         else:
                             del line
@@ -49,8 +66,6 @@ def fetch(item, subtable=None, toml="/settings.toml"):
                         else:
                             del line
                     elif line.startswith(item + "="):
-                        if line.endswith("\n"):
-                            line = line[:-1]
                         result = _elementfetch(line, item)
                     else:
                         del line
