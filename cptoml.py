@@ -7,11 +7,14 @@ def _elementfetch(line, item):
 
     result = line[line.find("=") + 1 :]
 
-    while result.startswith(" "):  # remove unused spaces
-        result = result[1:]
+    if "#" in result:  # remove comments
+        result = result[: result.rfind("#")]
 
-    if "#" in result:  # remove commends
-        result = result[: result.rfind('"') + 1]
+    # remove unused spaces
+    while result.startswith(" "):
+        result = result[1:]
+    while result.endswith(" "):
+        result = result[:-1]
 
     if result.startswith('"') and result.endswith('"'):
         result = result[1:-1]
