@@ -1,0 +1,3 @@
+[submodule "resources/CircuitMPY"]
+	path = resources/CircuitMPY
+	url = https://github.com/bill88t/CircuitMPY
