@@ -5,10 +5,11 @@ def _elementfetch(line, item):
     result = line[len(item) + 1 :]
     if result.startswith('"') and result.endswith('"'):
         result = result[1:-1]
-    elif result.isdigit():
-        pass  # Nothing to do, this is needed though
+    elif result.isdigit() or (result[0] == "-" and result[1:].isdigit()):
+        result = int(result)
     else:
         del line, item, result
+        _collect()
         raise TypeError("Invalid value.")
     del line, item
     _collect()
@@ -19,7 +20,7 @@ def fetch(item, subtable=None, toml="/settings.toml"):
     if not isinstance(item, str):
         del item, subtable, toml
         raise TypeError("Item should be str.")
-    if not isinstance(subtable, str):
+    if subtable is not None and not isinstance(subtable, str):
         del item, subtable, toml
         raise TypeError("Subtable should be str.")
     try:
@@ -29,6 +30,8 @@ def fetch(item, subtable=None, toml="/settings.toml"):
                 for line in tomlf:
                     if not line.startswith("["):
                         if line.startswith(item + "="):
+                            if line.endswith("\n"):
+                                line = line[:-1]
                             result = _elementfetch(line, item)
                         else:
                             del line
@@ -39,12 +42,15 @@ def fetch(item, subtable=None, toml="/settings.toml"):
                 got = False
                 for line in tomlf:
                     if not got:
-                        if line.startswith("[") and line == f"[{subtable}]":
+                        if line.startswith("[") and line == f"[{subtable}]\n":
+                            # It should always end with \n
                             got = True  # we have reached the desired point
                             del line
                         else:
                             del line
                     elif line.startswith(item + "="):
+                        if line.endswith("\n"):
+                            line = line[:-1]
                         result = _elementfetch(line, item)
                     else:
                         del line
