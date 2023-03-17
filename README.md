@@ -2,7 +2,7 @@
 
 A CircuitPython module for managing toml files.<br />
 <br />
-To create an .mpy package, just run `make mpy`.<br />
+To create an .mpy package, just run <code>make mpy</code>.<br />
 <br />
 Basic usage guide:<br />
 ```
@@ -30,4 +30,4 @@ remount("/", True)
 <br />
 Empty tables are deleted automatically.<br />
 The toml file is formatted automatically on any write.<br />
-To edit a toml file other than `/settings.toml`, pass the option: `toml="/path_to_your.toml"`.<br />
+To edit a toml file other than <code>/settings.toml</code>, pass the option: <code>toml="/path_to_your.toml"</code>.<br />
