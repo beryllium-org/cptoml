@@ -79,7 +79,7 @@ def _lf(buf, key, start=0) -> int:
         if q and (tml.startswith(key + "=") or tml.startswith(key + " =")):
             result = tm
             q = False
-        elif q and ((len(buf) != tm + 1) or tml.startswith("[")):
+        elif q and ((len(buf) == tm + 1) or tml.startswith("[")):
             q = False
         del tml
         tm += 1
@@ -96,7 +96,7 @@ def _lm(key, value, comment=None) -> str:
     """
     result = key + " = "
     if isinstance(value, str):
-        result += '"' + value.replace("\\", "\\\\") + '"'  # make raw
+        result += '"' + value.replace("\n", "\\n") + '"'  # make raw
     elif isinstance(value, int) or isinstance(value, float):
         if str(value) != "inf":
             result += str(value)
@@ -112,6 +112,33 @@ def _lm(key, value, comment=None) -> str:
         result += " # " + comment
     del key, value, comment
     return result
+
+
+def _ap(data) -> list:
+    """
+    Apply formatting.
+
+    - Spaces it out subtables.
+    - Removes blank tables.
+    """
+    bb = False  # Back to back subtable decleration
+    el = False  # no element in subtable
+    for i in range(len(data) - 1, 0, -1):
+        if data[i].startswith("["):
+            if (bb is False) and el:
+                bb = True
+                el = False
+                data.insert(i, "")
+            else:  # The current subtable should be removed!
+                data.pop(i)
+                # Should remain true.
+        else:
+            if bb:
+                bb = False
+            if not el:
+                el = True
+    del bb, el
+    return data
 
 
 def _tf(buf, subtable) -> int:
@@ -195,7 +222,7 @@ def put(item, value, subtable=None, toml="/settings.toml", comment=None) -> None
             data.append(f"[{subtable}]")
             data.append(_lm(item, value, comment))
         else:  # Whatever start says
-            tr = _lf(data, item, start)  # fetch item index
+            tr = _lf(data, item, start + 1)  # fetch item index
             if tr == -1:  # New key
                 data.insert(start + 1, _lm(item, value, comment))
             else:  # Existing key
@@ -203,28 +230,43 @@ def put(item, value, subtable=None, toml="/settings.toml", comment=None) -> None
         del start
 
         # Reapply formatting
-        for i in range(len(data) - 2, 0, -1):
-            if data[i].startswith("["):
-                data.insert(i, "")
-
-        # Print output
-        print(str(data))
+        data = _ap(data)
 
         # Write to file
-        # if getmount("/").readonly:  # If it wasn't we won't make it
-        #    ro = True
-        #    print("Remounted")
-        #    remount("/", False)
-        # with open(toml, "w") as tomlw:
-        #    for line in data:
-        #        tomlw.write(f"{line}\n")
-        #        del line
-        # if ro:
-        #    remount("/", True)
-
+        with open(toml, "w") as tomlw:
+            for line in data:
+                tomlw.write(f"{line}\n")
+                del line
     del item, value, subtable, toml, comment, data, ro
 
 
 def delete(item, subtable=None, toml="/settings.toml") -> None:
-    raise NotImplementedError
-    # del item, subtable, toml
+    """
+    Delete an entry on the toml file.
+    """
+    data = None
+    try:
+        with open(toml) as tomlr:
+            data = _df(tomlr.read())
+    except OSError:
+        raise OSError("Toml file not found")
+    if data is not None:
+        # Find target line
+        start = 0
+        if subtable is not None:
+            start = _tf(data, subtable)  # find table offset
+        if start != -1:
+            tr = _lf(data, item, start + 1)  # fetch item index
+            if tr != -1:
+                data.pop(tr)
+        del start
+
+        # Reapply formatting
+        data = _ap(data)
+
+        # Write to file
+        with open(toml, "w") as tomlw:
+            for line in data:
+                tomlw.write(f"{line}\n")
+                del line
+    del item, subtable, toml, data
