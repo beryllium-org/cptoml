@@ -1,6 +1,3 @@
-from storage import remount, getmount
-
-
 def _rcm(line) -> str:
     """
     Remove comments from a line buffer.
