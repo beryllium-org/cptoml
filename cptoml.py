@@ -171,12 +171,16 @@ def _getk(buf, start=0):
     q = True
     tm = start
     while q:
+        tml = None
         try:
             tml = _rcm(buf[tm])
         except IndexError:
             q = False
-        if q and "=" in tml and not tml.startswith["["]:
-            res.append(tml[:tml.find("=")])
+        if q and "=" in tml and not tml.startswith("["):
+            tml = tml[:tml.find("=")]
+            while tml.endswith(" "):
+                tml = tml[:-1]
+            res.append(tml)
         elif q and tml.startswith("["):
             q = False
         del tml
@@ -191,13 +195,13 @@ def keys(subtable=None, toml="/settings.toml"):
             data = _df(tomlf.read())  # load into list
             result = list()
             if subtable is None:  # Browse root table
-                result += _getk(data)
+                result += _getk(data)  # fetch keys
             else:
                 start = _tf(data, subtable)  # find table offset
                 if start != -1:  # table found
-                    result += _getk(data, start+1)  # fetch item index
+                    result += _getk(data, start+1)  # fetch keys
                 del start
-            del data, subtable, toml, item
+            del data, subtable, toml
             return result
     except OSError:
         del item, subtable, toml
