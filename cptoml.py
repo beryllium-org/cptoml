@@ -163,6 +163,45 @@ def _tf(buf, subtable) -> int:
     del buf, subtable, tm, q
     return result
 
+def _getk(buf, start=0):
+    """
+    Get the keys off a table.
+    """
+    res = list()
+    q = True
+    tm = start
+    while q:
+        try:
+            tml = _rcm(buf[tm])
+        except IndexError:
+            q = False
+        if q and "=" in tml and not tml.startswith["["]:
+            res.append(tml[:tml.find("=")])
+        elif q and tml.startswith("["):
+            q = False
+        del tml
+        tm += 1
+    del buf, start, tm, q
+    return res
+
+
+def keys(subtable=None, toml="/settings.toml"):
+    try:
+        with open(toml) as tomlf:
+            data = _df(tomlf.read())  # load into list
+            result = list()
+            if subtable is None:  # Browse root table
+                result += _getk(data)
+            else:
+                start = _tf(data, subtable)  # find table offset
+                if start != -1:  # table found
+                    result += _getk(data, start+1)  # fetch item index
+                del start
+            del data, subtable, toml, item
+            return result
+    except OSError:
+        del item, subtable, toml
+        raise OSError("Toml file not found")
 
 def fetch(item, subtable=None, toml="/settings.toml"):
     if not isinstance(item, str):
