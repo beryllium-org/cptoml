@@ -3,7 +3,19 @@ def _rcm(line) -> str:
     Remove comments from a line buffer.
     Also removes misc chars.
     """
-    if line.rfind("#") != -1:  # Without the check -1 eats a char
+    if (
+        (line.rfind("#") != -1)
+        and (
+            line.find("'") != -1
+            and line.find("'") != line.rfind("'")
+            and (line.find("'") > line.rfind("#") or line.rfind("'") < line.rfind("#"))
+        )
+        and (
+            line.find('"') != -1
+            and line.find('"') != line.rfind('"')
+            and (line.find('"') > line.rfind("#") or line.rfind('"') < line.rfind("#"))
+        )
+    ):  # Without the -1 check eats a char
         line = line[: line.rfind("#")]
     while line.endswith(" ") or line.endswith("\n"):
         line = line[:-1]
@@ -163,6 +175,7 @@ def _tf(buf, subtable) -> int:
     del buf, subtable, tm, q
     return result
 
+
 def _getk(buf, start=0):
     """
     Get the keys off a table.
@@ -177,7 +190,7 @@ def _getk(buf, start=0):
         except IndexError:
             q = False
         if q and "=" in tml and not tml.startswith("["):
-            tml = tml[:tml.find("=")]
+            tml = tml[: tml.find("=")]
             while tml.endswith(" "):
                 tml = tml[:-1]
             res.append(tml)
@@ -199,13 +212,14 @@ def keys(subtable=None, toml="/settings.toml"):
             else:
                 start = _tf(data, subtable)  # find table offset
                 if start != -1:  # table found
-                    result += _getk(data, start+1)  # fetch keys
+                    result += _getk(data, start + 1)  # fetch keys
                 del start
             del data, subtable, toml
             return result
     except OSError:
         del item, subtable, toml
         raise OSError("Toml file not found")
+
 
 def fetch(item, subtable=None, toml="/settings.toml"):
     if not isinstance(item, str):
