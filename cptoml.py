@@ -1,4 +1,4 @@
-def _rcm(line) -> str:
+def _prepareline(line) -> str:
     """
     Remove comments from a line buffer.
     Also removes misc chars.
@@ -24,7 +24,7 @@ def _rcm(line) -> str:
     return line
 
 
-def _df(data):
+def _dataformat(data):
     """
     Prepares the data into a list.
     """
@@ -35,13 +35,13 @@ def _df(data):
     return data
 
 
-def _ef(line):
+def _linevalue(line):
     """
     Get the value out of a line.
     """
-    result = _rcm(line)
+    result = _prepareline(line)
     result = result[result.find("=") + 1 :]
-    result = _rcm(result)  # for spaces
+    result = _prepareline(result)  # for spaces
 
     if (result.startswith('"') and result.endswith('"')) or (
         result.startswith("'") and result.endswith("'")
@@ -70,7 +70,7 @@ def _ef(line):
     return result
 
 
-def _lf(buf, key, start=0) -> int:
+def _linefind(buf, key, start=0) -> int:
     """
     Find key buffer index.
     Use start to place into the correct table.
@@ -82,7 +82,7 @@ def _lf(buf, key, start=0) -> int:
     q = True
     while q:
         try:
-            tml = _rcm(buf[tm])
+            tml = _prepareline(buf[tm])
         except IndexError:
             q = False
         if q and (tml.startswith(key + "=") or tml.startswith(key + " =")):
@@ -98,7 +98,7 @@ def _lf(buf, key, start=0) -> int:
     return result
 
 
-def _lm(key, value, comment=None) -> str:
+def _linemake(key, value, comment=None) -> str:
     """
     Creates a new toml line with key and value.
     Accepts comment.
@@ -123,7 +123,7 @@ def _lm(key, value, comment=None) -> str:
     return result
 
 
-def _ap(data) -> list:
+def _applyformatting(data) -> list:
     """
     Apply formatting.
 
@@ -150,7 +150,7 @@ def _ap(data) -> list:
     return data
 
 
-def _tf(buf, subtable) -> int:
+def _tablefind(buf, subtable) -> int:
     """
     Find subtable buffer index.
 
@@ -162,7 +162,7 @@ def _tf(buf, subtable) -> int:
     while q:
         tml = None
         try:
-            tml = _rcm(buf[tm])
+            tml = _prepareline(buf[tm])
         except IndexError:
             q = False
         if q and tml.startswith("[") and (tml == f"[{subtable}]"):
@@ -176,7 +176,7 @@ def _tf(buf, subtable) -> int:
     return result
 
 
-def _getk(buf, start=0):
+def _getkeys(buf, start=0):
     """
     Get the keys off a table.
     """
@@ -186,7 +186,7 @@ def _getk(buf, start=0):
     while q:
         tml = None
         try:
-            tml = _rcm(buf[tm])
+            tml = _prepareline(buf[tm])
         except IndexError:
             q = False
         if q and "=" in tml and not tml.startswith("["):
@@ -205,14 +205,14 @@ def _getk(buf, start=0):
 def keys(subtable=None, toml="/settings.toml"):
     try:
         with open(toml) as tomlf:
-            data = _df(tomlf.read())  # load into list
+            data = _dataformat(tomlf.read())  # load into list
             result = list()
             if subtable is None:  # Browse root table
-                result += _getk(data)  # fetch keys
+                result += _getkeys(data)  # fetch keys
             else:
-                start = _tf(data, subtable)  # find table offset
+                start = _tablefind(data, subtable)  # find table offset
                 if start != -1:  # table found
-                    result += _getk(data, start + 1)  # fetch keys
+                    result += _getkeys(data, start + 1)  # fetch keys
                 del start
             del data, subtable, toml
             return result
@@ -230,20 +230,20 @@ def fetch(item, subtable=None, toml="/settings.toml"):
         raise TypeError("Subtable should be str.")
     try:
         with open(toml) as tomlf:
-            data = _df(tomlf.read())  # load into list
+            data = _dataformat(tomlf.read())  # load into list
             result = None
             if subtable is None:  # Browse root table
-                target = _lf(data, item)
+                target = _linefind(data, item)
                 if target != -1:
-                    result = _ef(data[target])
+                    result = _linevalue(data[target])
             else:
-                start = _tf(data, subtable)  # find table offset
+                start = _tablefind(data, subtable)  # find table offset
                 if start != -1:
                     start += 1
                 if start != -1:  # table found
-                    tr = _lf(data, item, start)  # fetch item index
+                    tr = _linefind(data, item, start)  # fetch item index
                     if tr != -1:
-                        result = _ef(data[tr])  # load value
+                        result = _linevalue(data[tr])  # load value
                     del tr
                 del start
             del data, subtable, toml, item
@@ -264,27 +264,27 @@ def put(item, value, subtable=None, toml="/settings.toml", comment=None) -> None
 
     try:
         with open(toml) as tomlr:
-            data = _df(tomlr.read())
+            data = _dataformat(tomlr.read())
     except OSError:
         raise OSError("Toml file not found")
     if data is not None:
         # Find target line
         start = 0
         if subtable is not None:
-            start = _tf(data, subtable)  # find table offset
+            start = _tablefind(data, subtable)  # find table offset
         if start == -1:  # Need to create new subtable
             data.append(f"[{subtable}]")
-            data.append(_lm(item, value, comment))
+            data.append(_linemake(item, value, comment))
         else:  # Whatever start says
-            tr = _lf(data, item, start + 1)  # fetch item index
+            tr = _linefind(data, item, start + 1)  # fetch item index
             if tr == -1:  # New key
-                data.insert(start + 1, _lm(item, value, comment))
+                data.insert(start + 1, _linemake(item, value, comment))
             else:  # Existing key
-                data[tr] = _lm(item, value, comment)
+                data[tr] = _linemake(item, value, comment)
         del start
 
         # Reapply formatting
-        data = _ap(data)
+        data = _applyformatting(data)
 
         # Write to file
         with open(toml, "w") as tomlw:
@@ -301,22 +301,22 @@ def delete(item, subtable=None, toml="/settings.toml") -> None:
     data = None
     try:
         with open(toml) as tomlr:
-            data = _df(tomlr.read())
+            data = _dataformat(tomlr.read())
     except OSError:
         raise OSError("Toml file not found")
     if data is not None:
         # Find target line
         start = 0
         if subtable is not None:
-            start = _tf(data, subtable)  # find table offset
+            start = _tablefind(data, subtable)  # find table offset
         if start != -1:
-            tr = _lf(data, item, start + 1)  # fetch item index
+            tr = _linefind(data, item, start + 1)  # fetch item index
             if tr != -1:
                 data.pop(tr)
         del start
 
         # Reapply formatting
-        data = _ap(data)
+        data = _applyformatting(data)
 
         # Write to file
         with open(toml, "w") as tomlw:
