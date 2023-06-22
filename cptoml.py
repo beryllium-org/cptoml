@@ -1,44 +1,55 @@
-def _prepareline(line) -> str:
+class InvalidTOMLSyntax(Exception):
+    """Custom class for bad syntax."""
+    pass
+
+def _prepareline(line: str) -> str:
     """
     Remove comments from a line buffer.
     Also removes misc chars.
     """
-    if (
-        (line.rfind("#") != -1)
-        and (
-            line.find("'") != -1
-            and line.find("'") != line.rfind("'")
-            and (line.find("'") > line.rfind("#") or line.rfind("'") < line.rfind("#"))
-        )
-        and (
-            line.find('"') != -1
-            and line.find('"') != line.rfind('"')
-            and (line.find('"') > line.rfind("#") or line.rfind('"') < line.rfind("#"))
-        )
-    ):  # Without the -1 check eats a char
-        line = line[: line.rfind("#")]
-    while line.endswith(" ") or line.endswith("\n"):
-        line = line[:-1]
-    while line.startswith(" "):
-        line = line[1:]
-    return line
+
+    # strip takes a string as argument it will remove any char on it
+    # from the head and tail of input string
+    _CHARS_TO_REMOVE = " \n"
+
+    # first cleanup
+    line = line.strip(_CHARS_TO_REMOVE)
+
+    # check for string
+    string_start = min(line.find("'"), line.find('"'))
+
+    # no string
+    if string_start == -1:
+        return line[:line.find("#")].strip(_CHARS_TO_REMOVE)
+
+    # TODO: Ensure string is after '='
+    # string
+    string_delimiter = line[string_start]
+    if line.count(string_delimiter != 2):
+        raise InvalidTOMLSyntax("Malformed string")
+
+    # end of line (after the string quotes)
+    string_end = line.rfind(string_delimiter)
+    end_line = line[string_end+1:]
+
+    # remove comment
+    comment_start = end_line.find("#")
+    
+    # check if there's still something
+    if end_line[:comment_start].strip(_CHARS_TO_REMOVE):
+        raise InvalidTOMLSyntax("Content after string has ended")
+
+    return line[:string_end+1].strip(_CHARS_TO_REMOVE)
 
 
-def _dataformat(data):
-    """
-    Prepares the data into a list.
-    """
-    data = data.split("\n")
-    for i in range(len(data) - 1, 0, -1):  # Go in reverse as to not break the index
-        if data[i].isspace() or not data[i]:  # "" == False
-            data.pop(i)
-    return data
+
+def _dataformat(data: str) -> list[str]:
+    """Prepares the data into a list."""
+    return [d for d in data.split("\n") if d and not d.isspace()]
 
 
-def _linevalue(line):
-    """
-    Get the value out of a line.
-    """
+def _linevalue(line: str) -> Any:
+    """Get the value out of a line."""
     result = _prepareline(line)
     result = result[result.find("=") + 1 :]
     result = _prepareline(result)  # for spaces
@@ -85,7 +96,7 @@ def _linefind(buf, key, start=0) -> int:
             tml = _prepareline(buf[tm])
         except IndexError:
             q = False
-        if q and (tml.startswith(key + "=") or tml.startswith(key + " =")):
+        if q and (tml.startswith(f"{key}=") or tml.startswith(f"{key} =")):
             result = tm
             q = False
         elif q and ((len(buf) == tm + 1) or tml.startswith("[")):
@@ -103,10 +114,10 @@ def _linemake(key, value, comment=None) -> str:
     Creates a new toml line with key and value.
     Accepts comment.
     """
-    result = key + " = "
+    result = f"{key} = "
     if isinstance(value, str):
         result += '"' + value.replace("\n", "\\n") + '"'  # make raw
-    elif isinstance(value, int) or isinstance(value, float):
+    elif isinstance(value, (int, float)):
         if str(value) != "inf":
             result += str(value)
         else:
@@ -118,7 +129,7 @@ def _linemake(key, value, comment=None) -> str:
         del result, key, value, comment
         raise TypeError("Unsupported type for toml")
     if comment is not None:
-        result += " # " + comment
+        result += f" # {comment}"
     del key, value, comment
     return result
 
@@ -156,49 +167,43 @@ def _tablefind(buf, subtable) -> int:
 
     Returns -1 when not found.
     """
-    result = -1
-    tm = 0
-    q = True
-    while q:
-        tml = None
+
+    for index, line in enumerate(buf):
         try:
-            tml = _prepareline(buf[tm])
+            tml = _prepareline(line)
+
+            if tml == f"[{subtable}]":
+                return index
+
         except IndexError:
-            q = False
-        if q and tml.startswith("[") and (tml == f"[{subtable}]"):
-            result = tm
-            q = False
-        del tml
-        tm += 1
-        if not q:
             break
-    del buf, subtable, tm, q
-    return result
+
+    del buf, subtable
+    return -1
 
 
 def _getkeys(buf, start=0):
     """
     Get the keys off a table.
     """
-    res = list()
-    q = True
+    res = []
     tm = start
-    while q:
+    for index, line in enumerate(buf, start):
         tml = None
         try:
-            tml = _prepareline(buf[tm])
+            tml = _prepareline(line)
+            
+            if tml.startswith("["):
+                break
+            
+            if "=" in tml:
+                tml = tml[: tml.find("=")]
+                res.append(tml.rstrip())
+
         except IndexError:
-            q = False
-        if q and "=" in tml and not tml.startswith("["):
-            tml = tml[: tml.find("=")]
-            while tml.endswith(" "):
-                tml = tml[:-1]
-            res.append(tml)
-        elif q and tml.startswith("["):
-            q = False
-        del tml
-        tm += 1
-    del buf, start, tm, q
+            break
+
+    del buf, start
     return res
 
 
@@ -206,7 +211,7 @@ def keys(subtable=None, toml="/settings.toml"):
     try:
         with open(toml) as tomlf:
             data = _dataformat(tomlf.read())  # load into list
-            result = list()
+            result = []
             if subtable is None:  # Browse root table
                 result += _getkeys(data)  # fetch keys
             else:
