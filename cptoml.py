@@ -276,9 +276,11 @@ def put(item, value, subtable=None, toml="/settings.toml", comment=None) -> None
             data.append(f"[{subtable}]")
             data.append(_linemake(item, value, comment))
         else:  # Whatever start says
-            tr = _linefind(data, item, start + 1)  # fetch item index
+            if start:
+                start += 1
+            tr = _linefind(data, item, start)  # fetch item index
             if tr == -1:  # New key
-                data.insert(start + 1, _linemake(item, value, comment))
+                data.insert(start, _linemake(item, value, comment))
             else:  # Existing key
                 data[tr] = _linemake(item, value, comment)
         del start
