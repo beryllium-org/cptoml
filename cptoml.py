@@ -180,7 +180,7 @@ def _getkeys(buf, start=0):
     """
     Get the keys off a table.
     """
-    res = list()
+    res = []
     q = True
     tm = start
     while q:
@@ -206,7 +206,7 @@ def keys(subtable=None, toml="/settings.toml"):
     try:
         with open(toml) as tomlf:
             data = _dataformat(tomlf.read())  # load into list
-            result = list()
+            result = []
             if subtable is None:  # Browse root table
                 result += _getkeys(data)  # fetch keys
             else:
@@ -215,7 +215,12 @@ def keys(subtable=None, toml="/settings.toml"):
                     result += _getkeys(data, start + 1)  # fetch keys
                 del start
             del data, subtable, toml
-            return result
+            result2 = []
+            for i in result:
+                if i[0] != "#":
+                    result2.append(i)
+            del result
+            return result2
     except OSError:
         del item, subtable, toml
         raise OSError("Toml file not found")
