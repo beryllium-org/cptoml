@@ -43,7 +43,9 @@ def _linevalue(line):
     result = result[result.find("=") + 1 :]
     result = _prepareline(result)  # for spaces
 
-    if (result.startswith('"') and result.endswith('"')) or (
+    if not len(result):
+        return None
+    elif (result.startswith('"') and result.endswith('"')) or (
         result.startswith("'") and result.endswith("'")
     ):  # chars
         result = result[1:-1]
