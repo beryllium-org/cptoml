@@ -51,7 +51,7 @@ def _linevalue(line):
         result = result[1:-1]
     elif result.isdigit() or (result[0] in ["-", "+"] and result[1:].isdigit()):  # ints
         result = int(result)
-    elif result[0] == "0" and result[1].isletter():  # other numeric
+    elif result[0] == "0" and result[1].isalpha():  # other numeric
         if result[1] == "x":  # hex
             result = hex(int(result[2:], 16))
         elif result[1] == "o":  # octal
