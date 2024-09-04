@@ -56,6 +56,8 @@ def _linevalue(line):
             result = hex(int(result[2:], 16))
         elif result[1] == "o":  # octal
             result = oct(int(result[2:], 8))
+        elif result[1] == "b":  # binary
+            result = bin(int(result[2:], 2))
         elif result[0].isdigit() and ("e" in result):  # notation
             exec(f"result = int({result})")
         else:
