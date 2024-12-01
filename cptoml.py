@@ -17,7 +17,7 @@ def _prepareline(line) -> str:
         )
     ):  # Without the -1 check eats a char
         line = line[: line.rfind("#")]
-    while line.endswith(" ") or line.endswith("\n"):
+    while line.endswith(" ") or line.endswith("\n") or line.endswith("\r"):
         line = line[:-1]
     while line.startswith(" "):
         line = line[1:]
